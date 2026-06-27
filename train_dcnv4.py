@@ -26,7 +26,7 @@ print(f'Device: {device}')
 # --- Build model ---
 model = YOLO('cfgs/yolov8-DBB-DCNV4.yaml', task='detect').model.to(device)
 
-with open(os.path.expanduser('~/dev/medical_detection/data.yaml')) as f:
+with open('data/data.yaml') as f:
     data_cfg = yaml.safe_load(f)
 model.nc = data_cfg['nc']
 model.names = data_cfg['names']

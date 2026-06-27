@@ -1,0 +1,61 @@
+# YOLOv8 🌟 - DBB + DCNV4 (精度优先组合)
+# ═══════════════════════════════════════════════
+# 设计理念:
+#   Backbone: DBB (Diverse Branch Block)
+#     - 多分支重参数化 → 训练时丰富梯度流，推理时零开销
+#     - 提升 backbone 特征提取能力
+#
+#   Head (P4/P5): DCNV4
+#     - 可变形卷积 V4 → 更好的几何形变适应
+#     - 在高层特征图上使用，对检测头最有利
+#
+#   精度 vs 标准 YOLOv8: +2~3% mAP (预期)
+#   推理速度 vs 标准 YOLOv8: 约持平 (DBB融合后)
+#
+# ⚠ 训练配置:
+#   - DCNV4 需要关闭 AMP (amp=False)
+#   - 建议使用更大的 batch size 以发挥 RTX 5060 Ti 16GB 优势
+# ═══════════════════════════════════════════════
+
+# Parameters
+nc: 80
+scales:
+  # [depth, width, max_channels]
+  n: [0.33, 0.25, 1024]   # ~4.0M params
+  s: [0.33, 0.50, 1024]   # ~13.5M params
+  m: [0.67, 0.75, 768]    # ~30.0M params
+  l: [1.00, 1.00, 512]    # ~50.0M params
+  x: [1.00, 1.25, 512]    # ~78.0M params
+
+# Backbone - 使用 DBB 提升特征提取
+backbone:
+  - [-1, 1, Conv, [64, 3, 2]]         # 0-P1/2
+  - [-1, 1, Conv, [128, 3, 2]]        # 1-P2/4
+  - [-1, 3, C2f_DBB, [128, True]]     # 2  ← DBB (浅层)
+  - [-1, 1, Conv, [256, 3, 2]]        # 3-P3/8
+  - [-1, 6, C2f_DBB, [256, True]]     # 4  ← DBB (中层)
+  - [-1, 1, Conv, [512, 3, 2]]        # 5-P4/16
+  - [-1, 6, C2f_DBB, [512, True]]     # 6  ← DBB (深层)
+  - [-1, 1, Conv, [1024, 3, 2]]       # 7-P5/32
+  - [-1, 3, C2f_DBB, [1024, True]]    # 8  ← DBB (最深层)
+  - [-1, 1, SPPF, [1024, 5]]          # 9
+
+# Head - P4/P5 层使用 DCNV4 增强几何适应
+head:
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]
+  - [[-1, 6], 1, Concat, [1]]
+  - [-1, 3, C2f_DCNV4, [512]]        # 12 ← DCNV4 (P4 FPN)
+
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]
+  - [[-1, 4], 1, Concat, [1]]
+  - [-1, 3, C2f_DBB, [256]]           # 15 ← DBB (P3/8-small)
+
+  - [-1, 1, Conv, [256, 3, 2]]
+  - [[-1, 12], 1, Concat, [1]]
+  - [-1, 3, C2f_DCNV4, [512]]        # 18 ← DCNV4 (P4/16-medium)
+
+  - [-1, 1, Conv, [512, 3, 2]]
+  - [[-1, 9], 1, Concat, [1]]
+  - [-1, 3, C2f_DCNV4, [1024]]       # 21 ← DCNV4 (P5/32-large)
+
+  - [[15, 18, 21], 1, Detect, [nc]]  # Detect(P3, P4, P5)
