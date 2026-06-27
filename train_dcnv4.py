@@ -42,7 +42,7 @@ print(f'Model ready | nc={model.nc} | params={sum(p.numel() for p in model.param
 train_dir = os.path.join(data_cfg['path'], data_cfg['train'])
 dataset = YOLODataset(
     img_path=train_dir, imgsz=640, augment=True,
-    classes=data_cfg['nc'], data=data_cfg, stride=32,
+    data=data_cfg, stride=32,
 )
 dataloader = DataLoader(
     dataset, batch_size=8, shuffle=True, num_workers=0,
