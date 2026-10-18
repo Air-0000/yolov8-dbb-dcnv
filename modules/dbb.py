@@ -114,15 +114,8 @@ class DBB(nn.Module):
 
     def _avg_to_conv(self):
         conv_w, conv_b = self._fuse_bn(self.branch_avg[1], self.branch_avg[2])
-        avg_kernel = torch.zeros(self.c1, 1, 3, 3, device=conv_w.device, dtype=conv_w.dtype)
-        avg_kernel[:, :, :, :] = 1.0 / 9.0
-        # 将 avg pool (1/9均值滤波) 与 1x1 conv 组合
-        k_eff = F.conv2d(
-            avg_kernel.expand(-1, self.c1 // self.groups, -1, -1).transpose(0, 1),
-            conv_w,
-            padding=1,
-            groups=self.groups,
-        )
+        # 1x1 conv 权重除以 9 并在 3x3 空间展开
+        k_eff = (conv_w * (1.0 / 9.0)).repeat(1, 1, 3, 3)
         return k_eff, conv_b
 
     def _fuse_1x1_seq(self, seq):
@@ -130,13 +123,8 @@ class DBB(nn.Module):
         conv1, bn1, conv2, bn2 = seq
         w1, b1 = self._fuse_bn(conv1, bn1)
         w2, b2 = self._fuse_bn(conv2, bn2)
-        
-        if conv1.kernel_size == (1, 1) and conv2.kernel_size == (1, 1):
-            w = torch.matmul(w2.view(w2.size(0), -1), w1.view(w1.size(0), -1)).view(w2.size(0), -1, 1, 1)
-        else:
-            # 1x1 -> 3x3 序列
-            w = F.conv2d(w1.permute(1, 0, 2, 3), w2, padding=conv2.padding).permute(1, 0, 2, 3)
-        b = w2.view(w2.size(0), -1) @ b1 + b2
+        w = torch.einsum('ocuv,cj->ojuv', w2, w1.squeeze(-1).squeeze(-1))
+        b = w2.sum(dim=(2, 3)) @ b1 + b2
         return w.to(dtype=w1.dtype), b.to(dtype=b1.dtype)
 
     def switch_to_deploy(self):
@@ -174,12 +162,11 @@ class DBB(nn.Module):
         # 6. Identity 分支
         if self.branch_identity is not None:
             id_k = torch.zeros(self.c2, self.c1, 3, 3, device=device, dtype=dtype)
+            std = (self.branch_identity.running_var + self.branch_identity.eps).sqrt()
+            scale = self.branch_identity.weight / std
             for i in range(min(self.c1, self.c2)):
-                id_k[i, i % self.c1, 1, 1] = 1.0
-            id_b = self.branch_identity.bias.detach() - \
-                   self.branch_identity.running_mean.detach() * \
-                   self.branch_identity.weight.detach() / \
-                   (self.branch_identity.running_var.detach() + self.branch_identity.eps).sqrt()
+                id_k[i, i % self.c1, 1, 1] = scale[i]
+            id_b = self.branch_identity.bias - self.branch_identity.running_mean * scale
             K += id_k
             B += id_b
 

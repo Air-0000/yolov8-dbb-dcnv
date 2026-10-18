@@ -15,9 +15,13 @@ import numpy as np
 init_seeds()
 device = 'cuda:0'
 
-# --- Load model ---
+ckpt_path = sys.argv[1] if len(sys.argv) > 1 else 'runs/medical/manual_epoch50.pt'
+if not os.path.exists(ckpt_path):
+    print(f"Checkpoint '{ckpt_path}' not found. Please run training first or specify weights: python evaluate.py <path_to_pt>")
+    sys.exit(0)
+
 model = YOLO('cfgs/yolov8-DBB-DCNV4.yaml', task='detect')
-ckpt = torch.load('runs/medical/manual_epoch50.pt', map_location=device, weights_only=True)
+ckpt = torch.load(ckpt_path, map_location=device, weights_only=True)
 model.model.load_state_dict(ckpt['model_state_dict'])
 with open('data/data.yaml') as f:
     data_cfg = yaml.safe_load(f)

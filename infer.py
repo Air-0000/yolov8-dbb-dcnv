@@ -21,7 +21,12 @@ with open('data/data.yaml') as f:
     data_cfg = yaml.safe_load(f)
 
 # Load checkpoint weights into raw model
-ckpt = torch.load('runs/medical/manual_epoch50.pt', map_location=device, weights_only=True)
+ckpt_path = sys.argv[1] if len(sys.argv) > 1 else 'runs/medical/manual_epoch50.pt'
+if not os.path.exists(ckpt_path):
+    print(f"Checkpoint '{ckpt_path}' not found. Please run training first or specify weights: python infer.py <path_to_pt>")
+    sys.exit(0)
+
+ckpt = torch.load(ckpt_path, map_location=device, weights_only=True)
 model.model.load_state_dict(ckpt['model_state_dict'])
 model.model.nc = data_cfg['nc']
 model.model.names = data_cfg['names']

@@ -7,11 +7,18 @@ __pycache__/
 *.pyc
 .cache
 # Data cache
-data/labels*.cache
-# Duplicate root-level images (images in subdirs are what data.yaml uses)
+*.cache
+data/labels/*.cache
+data/labels/train.cache
+data/labels/val.cache
+# Duplicate root-level images & labels (subdirectories train/ & val/ are used)
 data/images/BloodImage_*.jpg
+data/labels/BloodImage_*.txt
 # Misc
 results.csv
 labels.jpg
 val_batch0_labels.jpg
 val_batch0_pred.jpg
+.DS_Store
+.DS_Store?
+._*

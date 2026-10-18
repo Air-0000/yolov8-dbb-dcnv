@@ -13,7 +13,20 @@ C2f = CSP bottleneck with 2 convolutions
 import torch
 import torch.nn as nn
 
-from ultralytics.nn.modules import Conv
+try:
+    from ultralytics.nn.modules import Conv
+except ImportError:
+    class Conv(nn.Module):
+        default_act = nn.SiLU()
+        def __init__(self, c1, c2, k=1, s=1, p=None, g=1, d=1, act=True):
+            super().__init__()
+            if p is None:
+                p = k // 2 if isinstance(k, int) else [x // 2 for x in k]
+            self.conv = nn.Conv2d(c1, c2, k, s, p, groups=g, dilation=d, bias=False)
+            self.bn = nn.BatchNorm2d(c2)
+            self.act = self.default_act if act is True else (act if isinstance(act, nn.Module) else nn.Identity())
+        def forward(self, x):
+            return self.act(self.bn(self.conv(x)))
 
 from .dbb import DBB, DBBottleNeck, DeepDBBottleNeck, WDBBottleNeck
 from .dcnv import DCNv3_pytorch, DCNv4_pytorch, get_dcnv3, get_dcnv4
