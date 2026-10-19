@@ -1,0 +1,62 @@
+[
+  {
+    "variant": "Baseline (Vanilla YOLOv8n)",
+    "description": "Standard YOLOv8n with standard 3x3 Conv Bottleneck",
+    "config": "yolov8n.yaml",
+    "params_m": 3.16,
+    "gflops": 8.7,
+    "latency_ms": 3.31,
+    "fps": 301.9,
+    "train_time_sec": 64.0,
+    "map50": 0.0699,
+    "map50_95": 0.0433
+  },
+  {
+    "variant": "YOLOv8n-C2f-DBB",
+    "description": "All C2f Bottlenecks replaced by Multi-branch DBB (reparam)",
+    "config": "cfgs/yolov8-C2f-DBB.yaml",
+    "params_m": 4.64,
+    "gflops": 8.7,
+    "latency_ms": 4.87,
+    "fps": 205.1,
+    "train_time_sec": 82.4,
+    "map50": 0.0531,
+    "map50_95": 0.0329
+  },
+  {
+    "variant": "YOLOv8n-C2f-DCNV4",
+    "description": "All C2f Bottlenecks replaced by DCNv4 deformable convolutions",
+    "config": "cfgs/yolov8-C2f-DCNV4.yaml",
+    "params_m": 2.89,
+    "gflops": 8.7,
+    "latency_ms": 6.74,
+    "fps": 148.4,
+    "train_time_sec": 90.3,
+    "map50": 0.07,
+    "map50_95": 0.0434
+  },
+  {
+    "variant": "YOLOv8n-DeepDBB",
+    "description": "DBB applied selectively to deeper stages (P4/P5) only",
+    "config": "cfgs/yolov8-C2f-DeepDBB.yaml",
+    "params_m": 5.86,
+    "gflops": 8.7,
+    "latency_ms": 12.14,
+    "fps": 82.4,
+    "train_time_sec": 100.8,
+    "map50": 0.0906,
+    "map50_95": 0.0562
+  },
+  {
+    "variant": "YOLOv8n-DBB-DCNV4 (Hybrid)",
+    "description": "Hybrid architecture: DBB in Backbone, DCNv4 in Neck/Head",
+    "config": "cfgs/yolov8-DBB-DCNV4.yaml",
+    "params_m": 3.67,
+    "gflops": 8.7,
+    "latency_ms": 6.65,
+    "fps": 150.4,
+    "train_time_sec": 89.8,
+    "map50": 0.0626,
+    "map50_95": 0.0388
+  }
+]
